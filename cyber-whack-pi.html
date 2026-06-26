@@ -133,7 +133,7 @@
         }else{
           combo++;var gain=10+Math.min(combo,10);score+=gain;comboEl.textContent=combo;hitSound(combo);
           mole.classList.add('pop');setTimeout(function(){mole.classList.remove('pop')},300);
-          reacts.push(rt);floatNum(hole,rt+'ms');updateAvg();
+          reacts.push(rt);reactsSum+=rt;floatNum(hole,rt+'ms');updateAvg();
           msg.innerHTML='&#9889; +'+gain+(combo>2?' · 连击 x'+combo:'')+' · <span class="cy-stage-tag">'+stageName+'</span>';
         }
         retract(hole);if(score<0)score=0;scoreEl.textContent=score;
@@ -141,31 +141,29 @@
     })(h,m);
   }
   function floatNum(hole,txt){var f=document.createElement('div');f.className='cy-float';f.textContent=txt;hole.appendChild(f);setTimeout(function(){f.remove()},900);}
-  var running=false,score=0,time=120,best=0,combo=0,reacts=[],tickTimer,nextTimer,stageName='';
-  function updateAvg(){if(!reacts.length){avgEl.innerHTML='--<small>ms</small>';return;}var s=0;for(var i=0;i<reacts.length;i++)s+=reacts[i];avgEl.innerHTML=Math.round(s/reacts.length)+'<small>ms</small>';}
-  function curParams(){var e=120-time,base,maxUp;
-    if(e<40){base=820-e*4;maxUp=2;stageName='STAGE 1 // 热身';}
-    else if(e<80){base=660-(e-40)*4;maxUp=3;stageName='STAGE 2 // 加速';}
-    else{base=500-(e-80)*2;maxUp=4;stageName='STAGE 3 // 过载';}
-    return {spawn:Math.max(320,base),maxUp:maxUp};}
+  var running=false,score=0,time=120,best=0,combo=0,reacts=[],reactsSum=0,tickTimer,nextTimer,stageName='';
+  function updateAvg(){if(!reacts.length){avgEl.innerHTML='--<small>ms</small>';return;}avgEl.innerHTML=Math.round(reactsSum/reacts.length)+'<small>ms</small>';}
+  function curParams(){var e=120-time,base,maxUp,sName;
+    if(e<40){base=820-e*4;maxUp=2;sName='STAGE 1 // 热身';}
+    else if(e<80){base=660-(e-40)*4;maxUp=3;sName='STAGE 2 // 加速';}
+    else{base=500-(e-80)*2;maxUp=4;sName='STAGE 3 // 过载';}
+    return {spawn:Math.max(320,base),maxUp:maxUp,elapsed:e,stageName:sName};}
   function retract(hole){hole.classList.remove('up','bomb');hole.dataset.bomb='0';}
   function spawn(){
-    var p=curParams();var upCount=0;for(var i=0;i<N;i++)if(holes[i].classList.contains('up'))upCount++;
-    if(upCount<p.maxUp){
-      var down=[];for(var j=0;j<N;j++)if(!holes[j].classList.contains('up'))down.push(holes[j]);
-      if(down.length){
-        var h=down[Math.floor(Math.random()*down.length)];
-        var e=120-time;var bombRate=0.16+Math.min(0.16,e/120*0.16);var bomb=Math.random()<bombRate;
-        h.dataset.bomb=bomb?'1':'0';h.dataset.spawn=Date.now();
-        h.querySelector('.cy-mole').textContent=bomb?'☠️':'👾';
-        if(bomb)h.classList.add('bomb');h.classList.add('up');
-        var life=p.spawn*1.5;(function(hh){setTimeout(function(){if(hh.classList.contains('up'))retract(hh)},life)})(h);
-      }
+    var p=curParams();stageName=p.stageName;var upCount=0,down=[];
+    for(var i=0;i<N;i++){if(holes[i].classList.contains('up'))upCount++;else down.push(holes[i]);}
+    if(upCount<p.maxUp&&down.length){
+      var h=down[Math.floor(Math.random()*down.length)];
+      var bombRate=0.16+Math.min(0.16,p.elapsed/120*0.16);var bomb=Math.random()<bombRate;
+      h.dataset.bomb=bomb?'1':'0';h.dataset.spawn=Date.now();
+      h.querySelector('.cy-mole').textContent=bomb?'☠️':'👾';
+      if(bomb)h.classList.add('bomb');h.classList.add('up');
+      var life=p.spawn*1.5;(function(hh){setTimeout(function(){if(hh.classList.contains('up'))retract(hh)},life)})(h);
     }
     clearTimeout(nextTimer);nextTimer=setTimeout(spawn,p.spawn);
   }
   function start(){
-    ensureCtx();startSound();running=true;score=0;time=120;combo=0;reacts=[];
+    ensureCtx();startSound();running=true;score=0;time=120;combo=0;reacts=[];reactsSum=0;
     scoreEl.textContent=0;timeEl.textContent=120;comboEl.textContent=0;avgEl.innerHTML='--<small>ms</small>';
     fill.style.width='100%';resultEl.classList.remove('show');resultEl.innerHTML='';holes.forEach(retract);
     btn.disabled=true;btn.textContent='RUNNING';msg.innerHTML='系统启动 · <span class="cy-stage-tag">STAGE 1 // 热身</span>';
